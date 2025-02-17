@@ -1,0 +1,11 @@
+gym
+torch  
+pandas
+jupyter
+matplotlib
+seaborn
+ipykernel
+plotly
+tensorboard
+pygame
+numpy == 1.23.2
