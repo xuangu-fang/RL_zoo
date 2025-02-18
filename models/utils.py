@@ -7,7 +7,8 @@ import time
 from IPython.display import clear_output
 
 class ExperienceBuffer:
-    def __init__(self):
+    def __init__(self, device='cpu'):
+        self.device = device
         self.reset()
     
     def reset(self):
@@ -28,20 +29,31 @@ class ExperienceBuffer:
             discounted_rewards.insert(0, R)
             
         # 标准化处理，使奖励均值为0，方差为1
-        discounted_rewards = torch.FloatTensor(discounted_rewards)
-        discounted_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
+        discounted_rewards = torch.FloatTensor(discounted_rewards).to(self.device)
+        # discounted_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
+        # discounted_rewards = discounted_rewards - discounted_rewards.mean() 
+
         
         return discounted_rewards
     
     def get_policy_loss(self, gamma=0.99):
         # 检查是否有足够的数据
         if len(self.rewards) == 0 or len(self.log_probs) == 0:
-            return torch.tensor(0.0, requires_grad=True)
+            return torch.tensor(0.0, requires_grad=True, device=self.device)
         
         discounted_rewards = self.get_discounted_rewards(gamma)
-        log_probs = torch.stack(self.log_probs)
+        # 使用奖励均值作为基线
+        baseline = discounted_rewards.mean()
+        advantage = discounted_rewards - baseline
+
+        # normalize advantage
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-9)
+
+        log_probs = torch.stack(self.log_probs).to(self.device)
         policy_loss = -(log_probs * discounted_rewards).sum()
-        
+        # policy_loss = -(log_probs * advantage).sum()
+
+
         return policy_loss
 
 def plot_training_results(episode_rewards, window_size=100):
